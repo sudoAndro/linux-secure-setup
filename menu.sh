@@ -1,54 +1,55 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-while true
-do
+set -euo pipefail
 
-CHOICE=$(whiptail --title "Raspi Secure Setup" \
---menu "Option wählen" 20 60 10 \
-"1" "System Update" \
-"2" "Firewall installieren (UFW)" \
-"3" "Fail2ban installieren" \
-"4" "Automatische Updates" \
-"5" "SSH Hardening" \
-"6" "CrowdSec installieren" \
-"0" "Beenden" 3>&1 1>&2 2>&3)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MODULE_DIR="$SCRIPT_DIR/modules"
 
-if [ $? -ne 0 ]; then
-    clear
-    exit
-fi
+# shellcheck source=/dev/null
+source "$MODULE_DIR/common.sh"
 
-case $CHOICE in
+require_root
+require_whiptail
 
-1)
-bash modules/update.sh
-;;
+while true; do
+    CHOICE=$(whiptail --title "Raspi Secure Setup" \
+        --menu "Choose an option" 20 78 12 \
+        "1"  "System Update and Upgrade" \
+        "2"  "Install Required Packages" \
+        "3"  "Create Admin User" \
+        "4"  "SSH Configuration and Hardening" \
+        "5"  "UFW Firewall" \
+        "6"  "Fail2ban" \
+        "7"  "CrowdSec" \
+        "8"  "Automatic Security Updates" \
+        "9"  "Kernel Hardening" \
+        "10" "Cleanup" \
+        "11" "Package Integrity Check" \
+        "0"  "Exit" \
+        3>&1 1>&2 2>&3)
 
-2)
-bash modules/ufw.sh
-;;
+    EXIT_STATUS=$?
 
-3)
-bash modules/fail2ban.sh
-;;
+    if [[ $EXIT_STATUS -ne 0 ]]; then
+        clear
+        exit 0
+    fi
 
-4)
-bash modules/autoupdates.sh
-;;
-
-5)
-bash modules/ssh.sh
-;;
-
-6)
-bash modules/crowdsec.sh
-;;
-
-0)
-clear
-exit
-;;
-
-esac
-
+    case "$CHOICE" in
+        1) bash "$MODULE_DIR/update.sh" ;;
+        2) bash "$MODULE_DIR/packages.sh" ;;
+        3) bash "$MODULE_DIR/user.sh" ;;
+        4) bash "$MODULE_DIR/ssh.sh" ;;
+        5) bash "$MODULE_DIR/ufw.sh" ;;
+        6) bash "$MODULE_DIR/fail2ban.sh" ;;
+        7) bash "$MODULE_DIR/crowdsec.sh" ;;
+        8) bash "$MODULE_DIR/autoupdates.sh" ;;
+        9) bash "$MODULE_DIR/kernel.sh" ;;
+        10) bash "$MODULE_DIR/cleanup.sh" ;;
+        11) bash "$MODULE_DIR/integrity.sh" ;;
+        0)
+            clear
+            exit 0
+            ;;
+    esac
 done
