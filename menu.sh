@@ -12,7 +12,7 @@ require_root
 require_whiptail
 
 while true; do
-    CHOICE=$(whiptail --title "Raspi Secure Setup" \
+    CHOICE=$(whiptail --title "Linux Secure Setup" \
         --menu "Choose an option" 20 78 12 \
         "1"  "System Update and Upgrade" \
         "2"  "Install Required Packages" \
