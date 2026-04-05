@@ -18,7 +18,7 @@ cat << "EOF"
                                                                                  |_|    
 EOF
 echo -e "\033[1;31m"
-echo "                    		        Linux Secure Secure Toolkit by sudoAndro"
+echo "                                Linux Secure Secure Toolkit: Created by sudoAndro"
 # RESET COLOR
 echo -e "\033[0m"
 
