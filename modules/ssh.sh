@@ -29,6 +29,12 @@ select_or_create_user() {
     local password2
 
     username=$(prompt_username) || return 1
+    username=$(printf '%s' "$username" | tr -cd 'a-zA-Z0-9_-')
+
+    if [[ -z "$username" ]]; then
+        msg_box "Fehler" "Benutzername ist leer oder ungültig."
+        return 1
+    fi
 
     if id "$username" >/dev/null 2>&1; then
         if ! id -nG "$username" | grep -qw sudo; then
@@ -72,15 +78,12 @@ prepare_ssh_dir() {
     local auth_keys
 
     home_dir=$(eval echo "~$username")
-
     ssh_dir="$home_dir/.ssh"
     auth_keys="$ssh_dir/authorized_keys"
 
-    # SSH Verzeichnis erstellen
     mkdir -p "$ssh_dir"
     touch "$auth_keys"
 
-    # Rechte setzen
     chown -R "$username:$username" "$ssh_dir"
     chmod 700 "$ssh_dir"
     chmod 600 "$auth_keys"
@@ -124,6 +127,15 @@ apply_ssh_hardening() {
     set_sshd_option "AllowUsers" "$username"
 }
 
+handle_ssh_socket() {
+    if systemctl is-active --quiet ssh.socket; then
+        msg_box "SSH Socket erkannt" "ssh.socket ist aktiv.\n\nDieser kann den Port aus sshd_config überschreiben.\n\nDer Socket wird jetzt deaktiviert, damit der konfigurierte SSH-Port verwendet wird."
+
+        systemctl disable --now ssh.socket
+        systemctl mask ssh.socket
+    fi
+}
+
 restart_ssh_service() {
     if systemctl list-unit-files | grep -q '^ssh\.service'; then
         systemctl restart ssh
@@ -139,18 +151,63 @@ restart_ssh_service() {
     return 1
 }
 
+verify_ssh_port() {
+    local expected_port="$1"
+    local listening
+    local tmp_file
+
+    listening=$(ss -tulpn 2>/dev/null | grep ssh || true)
+
+    if echo "$listening" | grep -q ":${expected_port}\b"; then
+        return 0
+    fi
+
+    tmp_file=$(mktemp)
+
+    {
+        echo "SSH hört NICHT auf dem erwarteten Port ${expected_port}."
+        echo
+        echo "Aktuelle SSH Listener:"
+        echo
+        echo "$listening"
+    } > "$tmp_file"
+
+    textbox_file "SSH Port Fehler" "$tmp_file"
+    rm -f "$tmp_file"
+
+    return 1
+}
+
+rollback_ssh_config() {
+    if [[ -f "$SSHD_BACKUP" ]]; then
+        cp "$SSHD_BACKUP" "$SSHD_CONFIG"
+        restart_ssh_service || true
+    fi
+}
+
+rollback_ssh_config() {
+    if [[ -f "$SSHD_BACKUP" ]]; then
+        cp "$SSHD_BACKUP" "$SSHD_CONFIG"
+        restart_ssh_service || true
+    fi
+}
+
 show_listening_ssh_ports() {
     local ports
+    local tmp_file
 
     ports=$(ss -tulpn 2>/dev/null | grep ssh || true)
 
+    tmp_file=$(mktemp)
+
     if [[ -n "$ports" ]]; then
-        printf '%s\n' "$ports" > /tmp/raspi_secure_ssh_ports.txt
-        textbox_file "SSH Listen Ports" "/tmp/raspi_secure_ssh_ports.txt"
-        rm -f /tmp/raspi_secure_ssh_ports.txt
+        printf '%s\n' "$ports" > "$tmp_file"
     else
-        msg_box "Hinweis" "Es konnten keine aktiven SSH-Listen-Ports angezeigt werden."
+        echo "Es konnten keine aktiven SSH-Listen-Ports angezeigt werden." > "$tmp_file"
     fi
+
+    textbox_file "SSH Listen Ports" "$tmp_file"
+    rm -f "$tmp_file"
 }
 
 main() {
@@ -162,6 +219,11 @@ main() {
 
     username=$(select_or_create_user) || exit 0
     username=$(printf '%s' "$username" | tr -cd 'a-zA-Z0-9_-')
+
+    if [[ -z "$username" ]]; then
+        msg_box "Fehler" "Benutzername ist leer oder ungültig."
+        exit 1
+    fi
 
     auth_keys=$(prepare_ssh_dir "$username") || exit 1
 
@@ -184,7 +246,16 @@ main() {
         exit 1
     fi
 
+    handle_ssh_socket
+
     restart_ssh_service || true
+
+    if ! verify_ssh_port "$port"; then
+        rollback_ssh_config
+        msg_box "Rollback ausgeführt" "Der gewünschte SSH-Port $port wurde nicht aktiv.\n\nDie alte SSH-Konfiguration wurde automatisch wiederhergestellt.\n\nRoot wird NICHT deaktiviert."
+        exit 1
+    fi
+
     show_listening_ssh_ports
 
     msg_box "Wichtig" "Teste JETZT in einem ZWEITEN Terminal den neuen Login.\n\nBeispiel:\nssh -p $port $username@SERVER-IP\n\nDie aktuelle Sitzung offen lassen.\n\nErst wenn das funktioniert, darf Root deaktiviert werden."

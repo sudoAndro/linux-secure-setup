@@ -16,15 +16,14 @@ while true; do
         --menu "Choose an option" 20 78 12 \
         "1"  "System Update and Upgrade" \
         "2"  "Install Required Packages" \
-        "3"  "Create Admin User" \
-        "4"  "SSH Configuration and Hardening" \
-        "5"  "UFW Firewall" \
-        "6"  "Fail2ban" \
-        "7"  "CrowdSec" \
-        "8"  "Automatic Security Updates" \
-        "9"  "Kernel Hardening" \
-        "10" "Cleanup" \
-        "11" "Package Integrity Check" \
+        "3"  "SSH Configuration and Hardening" \
+        "4"  "UFW Firewall" \
+        "5"  "Fail2Ban" \
+        "6"  "CrowdSec" \
+        "7"  "Automatic Security Updates" \
+        "8"  "Kernel Hardening" \
+        "9"  "Cleanup" \
+        "10" "Package Integrity Check" \
         "0"  "Exit" \
         3>&1 1>&2 2>&3)
 
@@ -38,15 +37,14 @@ while true; do
     case "$CHOICE" in
         1) bash "$MODULE_DIR/update.sh" ;;
         2) bash "$MODULE_DIR/packages.sh" ;;
-        3) bash "$MODULE_DIR/user.sh" ;;
-        4) bash "$MODULE_DIR/ssh.sh" ;;
-        5) bash "$MODULE_DIR/ufw.sh" ;;
-        6) bash "$MODULE_DIR/fail2ban.sh" ;;
-        7) bash "$MODULE_DIR/crowdsec.sh" ;;
-        8) bash "$MODULE_DIR/autoupdates.sh" ;;
-        9) bash "$MODULE_DIR/kernel.sh" ;;
-        10) bash "$MODULE_DIR/cleanup.sh" ;;
-        11) bash "$MODULE_DIR/integrity.sh" ;;
+        3) bash "$MODULE_DIR/ssh.sh" ;;
+        4) bash "$MODULE_DIR/ufw.sh" ;;
+        5) bash "$MODULE_DIR/fail2ban.sh" ;;
+        6) bash "$MODULE_DIR/crowdsec.sh" ;;
+        7) bash "$MODULE_DIR/autoupdates.sh" ;;
+        8) bash "$MODULE_DIR/kernel.sh" ;;
+        9) bash "$MODULE_DIR/cleanup.sh" ;;
+        10) bash "$MODULE_DIR/integrity.sh" ;;
         0)
             clear
             exit 0
