@@ -129,26 +129,26 @@ apply_ssh_hardening() {
 
 handle_ssh_socket() {
     if systemctl is-active --quiet ssh.socket; then
-        msg_box "SSH Socket erkannt" "ssh.socket ist aktiv.\n\nDieser kann den Port aus sshd_config überschreiben.\n\nDer Socket wird jetzt deaktiviert, damit der konfigurierte SSH-Port verwendet wird."
+       msg_box "SSH Socket erkannt" "ssh.socket ist aktiv.\n\nDieser kann den Port aus sshd_config überschreiben.\n\nDer Socket wird jetzt deaktiviert, damit der konfigurierte SSH-Port verwendet wird."
 
-        systemctl disable --now ssh.socket
-        systemctl mask ssh.socket
+       systemctl disable --now ssh.socket
+       systemctl mask ssh.socket
     fi
 }
 
 restart_ssh_service() {
     if systemctl list-unit-files | grep -q '^ssh\.service'; then
-        systemctl restart ssh
-        return 0
+       systemctl restart ssh
+       return 0
     fi
 
     if systemctl list-unit-files | grep -q '^sshd\.service'; then
-        systemctl restart sshd
-        return 0
+       systemctl restart sshd
+       return 0
     fi
 
-    msg_box "Warnung" "Kein Dienstname ssh oder sshd erkannt.\n\nBitte SSH-Dienst manuell neu starten."
-    return 1
+       msg_box "Warnung" "Kein Dienstname ssh oder sshd erkannt.\n\nBitte SSH-Dienst manuell neu starten."
+       return 1
 }
 
 verify_ssh_port() {
@@ -156,24 +156,25 @@ verify_ssh_port() {
     local listening
     local tmp_file
 
-    listening=$(ss -tulpn 2>/dev/null | grep ssh || true)
+       listening=$(ss -tulpn 2>/dev/null | grep ssh || true)
 
     if echo "$listening" | grep -q ":${expected_port}\b"; then
         return 0
     fi
 
-    tmp_file=$(mktemp)
+       tmp_file=$(mktemp)
 
     {
-        echo "SSH hört NICHT auf dem erwarteten Port ${expected_port}."
-        echo
-        echo "Aktuelle SSH Listener:"
-        echo
-        echo "$listening"
-    } > "$tmp_file"
+       echo "SSH hört NICHT auf dem erwarteten Port ${expected_port}."
+       echo
+       echo "Aktuelle SSH Listener:"
+       echo
+       echo "$listening"
+    
+    }  >    "$tmp_file"
 
-    textbox_file "SSH Port Fehler" "$tmp_file"
-    rm -f "$tmp_file"
+       textbox_file "SSH Port Fehler" "$tmp_file"
+       rm -f "$tmp_file"
 
     return 1
 }

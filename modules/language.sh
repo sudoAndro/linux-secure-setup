@@ -2,30 +2,35 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/common.sh"
+
+require_root
+require_whiptail
+
 choice=$(whiptail --title "System Language" \
---menu "Select system language" 15 60 2 \
-"en" "English" \
-"de" "Deutsch" \
-3>&1 1>&2 2>&3)
+    --menu "Choose system language" 15 60 5 \
+    "de" "Deutsch" \
+    "en" "English" \
+    3>&1 1>&2 2>&3) || exit 0
 
-if [[ "$choice" == "de" ]]; then
-
-    sudo apt update
-    sudo apt install -y language-pack-de locales
-
-    sudo locale-gen de_DE.UTF-8
-    sudo update-locale LANG=de_DE.UTF-8
-
-    whiptail --msgbox "German language installed.\nReboot recommended." 10 60
-
-else
-
-    sudo apt update
-    sudo apt install -y language-pack-en locales
-
-    sudo locale-gen en_US.UTF-8
-    sudo update-locale LANG=en_US.UTF-8
-
-    whiptail --msgbox "English language installed.\nReboot recommended." 10 60
-
-fi
+case "$choice" in
+    de)
+        apt update
+        apt install -y locales
+        sed -i 's/^# *de_CH.UTF-8 UTF-8/de_CH.UTF-8 UTF-8/' /etc/locale.gen || true
+        sed -i 's/^# *de_DE.UTF-8 UTF-8/de_DE.UTF-8 UTF-8/' /etc/locale.gen || true
+        locale-gen
+        update-locale LANG=de_CH.UTF-8
+        msg_box "Sprache" "Deutsch wurde eingerichtet.\nNeustart oder neue Anmeldung empfohlen."
+        ;;
+    en)
+        apt update
+        apt install -y locales
+        sed -i 's/^# *en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen || true
+        locale-gen
+        update-locale LANG=en_US.UTF-8
+        msg_box "Language" "English has been configured.\nReboot or re-login recommended."
+        ;;
+esac
