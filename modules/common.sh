@@ -90,3 +90,12 @@ pause_enter() {
     echo
     read -r -p "Press ENTER to continue..." _ < /dev/tty
 }
+
+info_box() {
+    local title="${1:-Linux Secure Setup}"
+    local message="${2:-Fertig.}"
+    local height="${3:-10}"
+    local width="${4:-60}"
+
+    whiptail --title "$title" --msgbox "$message" "$height" "$width"
+}
