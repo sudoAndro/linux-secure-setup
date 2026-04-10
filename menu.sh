@@ -20,6 +20,7 @@ MODULE_DIR="$SCRIPT_DIR/modules"
 # shellcheck source=/dev/null
 source "$MODULE_DIR/common.sh"
 
+ensure_ui_environment
 require_root
 require_whiptail
 
