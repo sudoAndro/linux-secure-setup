@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 set -euo pipefail
 
 ensure_ui_environment() {
@@ -9,12 +8,6 @@ ensure_ui_environment() {
         echo "Fehler: whiptail ist nicht installiert."
         echo "Bitte installiere es mit:"
         echo "  sudo apt update && sudo apt install -y whiptail dialog ncurses-term"
-        exit 1
-    fi
-
-    if ! command -v tput >/dev/null 2>&1; then
-        echo "Fehler: tput fehlt."
-        echo "Bitte installiere ncurses-term."
         exit 1
     fi
 
@@ -52,7 +45,55 @@ require_whiptail() {
     fi
 }
 
+msg_box() {
+    local message="${1:-OK}"
+    local height="${2:-10}"
+    local width="${3:-60}"
+
+    whiptail --title "Linux Secure Setup" --msgbox "$message" "$height" "$width"
+}
+
+yes_no_box() {
+    local message="${1:-Möchtest du fortfahren?}"
+    local height="${2:-10}"
+    local width="${3:-60}"
+
+    if whiptail --title "Linux Secure Setup" --yesno "$message" "$height" "$width"; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+input_box() {
+    local message="${1:-Bitte Eingabe machen:}"
+    local default_value="${2:-}"
+    local height="${3:-10}"
+    local width="${4:-60}"
+
+    whiptail --title "Linux Secure Setup" --inputbox "$message" "$height" "$width" "$default_value" 3>&1 1>&2 2>&3
+}
+
+password_box() {
+    local message="${1:-Bitte Passwort eingeben:}"
+    local height="${2:-10}"
+    local width="${3:-60}"
+
+    whiptail --title "Linux Secure Setup" --passwordbox "$message" "$height" "$width" 3>&1 1>&2 2>&3
+}
+
+menu_box() {
+    local title="${1:-Linux Secure Setup}"
+    local text="${2:-Bitte wählen:}"
+    local height="${3:-20}"
+    local width="${4:-70}"
+    local menu_height="${5:-10}"
+    shift 5
+
+    whiptail --title "$title" --menu "$text" "$height" "$width" "$menu_height" "$@" 3>&1 1>&2 2>&3
+}
+
 pause_enter() {
     echo
-    read -r -p "Press ENTER to continue..." _ < /dev/tty
+    read -r -p "Enter drücken..." _ < /dev/tty
 }
