@@ -25,6 +25,9 @@ echo -e "\033[0m"
 echo
 read -rp "Press ENTER to start setup..."
 
+apt update
+apt install -y git whiptail dialog ncurses-term
+
 #!/usr/bin/env bash
 set -euo pipefail
 
