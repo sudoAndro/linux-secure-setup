@@ -38,7 +38,7 @@ main() {
     echo
     echo "Packages successfully installed."
 
-    pause_enter
+    info_box "Install Packages" "Die benötigten Pakete wurden erfolgreich installiert."
 }
 
 main "$@"
