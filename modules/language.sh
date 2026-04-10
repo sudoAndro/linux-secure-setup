@@ -26,7 +26,7 @@ main() {
             sed -i 's/^# *de_DE.UTF-8 UTF-8/de_DE.UTF-8 UTF-8/' /etc/locale.gen || true
             locale-gen
             update-locale LANG=de_CH.UTF-8
-            msg_box "Sprache" "Deutsch wurde eingerichtet.\nNeustart oder neue Anmeldung empfohlen."
+            msg_box "Sprache" "Deutsch wurde eingerichtet.\n\nNeustart oder neue Anmeldung empfohlen."
             ;;
         en)
             apt update
@@ -34,7 +34,7 @@ main() {
             sed -i 's/^# *en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen || true
             locale-gen
             update-locale LANG=en_US.UTF-8
-            msg_box "Language" "English has been configured.\nReboot or re-login recommended."
+            msg_box "Language" "English has been configured.\n\nReboot or re-login recommended."
             ;;
     esac
 }
