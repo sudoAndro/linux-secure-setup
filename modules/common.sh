@@ -1,3 +1,4 @@
+cat > /opt/linux-secure-setup/modules/common.sh <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -89,102 +90,5 @@ password_box() {
 pause_enter() {
     echo
     read -r -p "Press ENTER to continue..." _ < /dev/tty
-}#!/usr/bin/env bash
-set -euo pipefail
-
-ensure_ui_environment() {
-    export TERM="${TERM:-xterm-256color}"
-
-    if ! command -v whiptail >/dev/null 2>&1; then
-        echo "Fehler: whiptail ist nicht installiert."
-        echo "Bitte installiere es mit:"
-        echo "  sudo apt update && sudo apt install -y whiptail dialog ncurses-term"
-        exit 1
-    fi
-
-    if [[ ! -r /dev/tty ]] || [[ ! -w /dev/tty ]]; then
-        echo "Fehler: Kein benutzbares TTY gefunden."
-        exit 1
-    fi
-
-    if [[ ! -t 0 ]]; then
-        exec < /dev/tty
-    fi
-
-    if [[ ! -t 1 ]]; then
-        exec > /dev/tty
-    fi
-
-    if [[ ! -t 2 ]]; then
-        exec 2> /dev/tty
-    fi
-
-    stty sane < /dev/tty || true
 }
-
-require_root() {
-    if [[ "${EUID}" -ne 0 ]]; then
-        echo "Dieses Script muss mit sudo oder als root ausgeführt werden."
-        exit 1
-    fi
-}
-
-require_whiptail() {
-    if ! command -v whiptail >/dev/null 2>&1; then
-        echo "whiptail ist nicht installiert."
-        exit 1
-    fi
-}
-
-msg_box() {
-    local message="${1:-OK}"
-    local height="${2:-10}"
-    local width="${3:-60}"
-
-    whiptail --title "Linux Secure Setup" --msgbox "$message" "$height" "$width"
-}
-
-yes_no_box() {
-    local message="${1:-Möchtest du fortfahren?}"
-    local height="${2:-10}"
-    local width="${3:-60}"
-
-    if whiptail --title "Linux Secure Setup" --yesno "$message" "$height" "$width"; then
-        return 0
-    else
-        return 1
-    fi
-}
-
-input_box() {
-    local message="${1:-Bitte Eingabe machen:}"
-    local default_value="${2:-}"
-    local height="${3:-10}"
-    local width="${4:-60}"
-
-    whiptail --title "Linux Secure Setup" --inputbox "$message" "$height" "$width" "$default_value" 3>&1 1>&2 2>&3
-}
-
-password_box() {
-    local message="${1:-Bitte Passwort eingeben:}"
-    local height="${2:-10}"
-    local width="${3:-60}"
-
-    whiptail --title "Linux Secure Setup" --passwordbox "$message" "$height" "$width" 3>&1 1>&2 2>&3
-}
-
-menu_box() {
-    local title="${1:-Linux Secure Setup}"
-    local text="${2:-Bitte wählen:}"
-    local height="${3:-20}"
-    local width="${4:-70}"
-    local menu_height="${5:-10}"
-    shift 5
-
-    whiptail --title "$title" --menu "$text" "$height" "$width" "$menu_height" "$@" 3>&1 1>&2 2>&3
-}
-
-pause_enter() {
-    echo
-    read -r -p "Enter drücken..." _ < /dev/tty
-}
+EOF
