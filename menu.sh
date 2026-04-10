@@ -1,8 +1,18 @@
 #!/usr/bin/env bash
-
-export TERM=${TERM:-xterm-256color}
-
 set -euo pipefail
+
+export TERM="${TERM:-xterm-256color}"
+
+if ! command -v whiptail >/dev/null 2>&1; then
+  echo "Fehler: whiptail ist nicht installiert."
+  echo "Bitte installiere es mit:"
+  echo "  sudo apt update && sudo apt install -y whiptail dialog ncurses-term"
+  exit 1
+fi
+
+if [[ ! -t 0 ]]; then
+  exec < /dev/tty
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MODULE_DIR="$SCRIPT_DIR/modules"
@@ -16,7 +26,7 @@ require_whiptail
 while true; do
     CHOICE=$(whiptail --title "Linux Secure Setup" \
         --menu "Choose an option" 20 78 12 \
-	"1"  "System Update and Upgrade" \
+   	    "1"  "System Update and Upgrade" \
         "2"  "Install Required Packages" \
         "3"  "System Language" \
         "4"  "Timezone" \
@@ -43,7 +53,7 @@ while true; do
         2) bash "$MODULE_DIR/packages.sh" ;;
         3) bash "$MODULE_DIR/language.sh" ;;
         4) bash "$MODULE_DIR/timezone.sh" ;;
-	5) bash "$MODULE_DIR/ssh.sh" ;;
+	    5) bash "$MODULE_DIR/ssh.sh" ;;
         6) bash "$MODULE_DIR/ufw.sh" ;;
         7) bash "$MODULE_DIR/fail2ban.sh" ;;
         8) bash "$MODULE_DIR/crowdsec.sh" ;;
