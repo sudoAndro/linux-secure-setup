@@ -186,12 +186,6 @@ rollback_ssh_config() {
     fi
 }
 
-rollback_ssh_config() {
-    if [[ -f "$SSHD_BACKUP" ]]; then
-        cp "$SSHD_BACKUP" "$SSHD_CONFIG"
-        restart_ssh_service || true
-    fi
-}
 
 show_listening_ssh_ports() {
     local ports
