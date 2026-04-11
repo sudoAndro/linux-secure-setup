@@ -20,7 +20,8 @@ PACKAGES=(
 )
 
 main() {
-    if ! yes_no_box "Install Packages" \
+    whiptail --title "Install Packages" \
+        --yesno \
 "Folgende Pakete werden installiert:
 
   curl
@@ -33,9 +34,7 @@ main() {
   gnupg
   lsb-release
 
-Fortfahren?"; then
-        exit 0
-    fi
+Fortfahren?" 22 55 || exit 0
 
     clear
     echo "Pakete werden installiert..."
