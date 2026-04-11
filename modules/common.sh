@@ -99,3 +99,45 @@ info_box() {
 
     whiptail --title "$title" --msgbox "$message" "$height" "$width"
 }
+
+# Zeigt den Inhalt einer Datei in einem scrollbaren Textfeld an
+textbox_file() {
+    local title="${1:-Output}"
+    local file="${2:-}"
+
+    if [[ -z "$file" || ! -f "$file" ]]; then
+        msg_box "$title" "Datei nicht gefunden: $file"
+        return 1
+    fi
+
+    whiptail --title "$title" --textbox "$file" 24 80
+}
+
+# Fragt nach einem Benutzernamen per Eingabebox
+prompt_username() {
+    local username
+    username=$(input_box "Benutzername" "Gib den Benutzernamen ein (nur a-z, 0-9, _, -):" "") || return 1
+
+    if [[ -z "$username" ]]; then
+        msg_box "Fehler" "Kein Benutzername eingegeben."
+        return 1
+    fi
+
+    printf '%s\n' "$username"
+}
+
+# Fragt nach einem SSH-Port per Eingabebox und validiert ihn
+prompt_port() {
+    local port
+    while true; do
+        port=$(input_box "SSH Port" "Gib den SSH-Port ein (1-65535):" "22") || return 1
+
+        if [[ "$port" =~ ^[0-9]+$ ]] && (( port >= 1 && port <= 65535 )); then
+            break
+        else
+            msg_box "Ungültiger Port" "Bitte einen gueltigen Port zwischen 1 und 65535 eingeben."
+        fi
+    done
+
+    printf '%s\n' "$port"
+}
