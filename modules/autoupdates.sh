@@ -1,10 +1,3 @@
-#!/bin/bash
-
-clear
-echo "Auto Updates Modul kommt als nächstes."
-echo
-read -p "Enter drücken..."
-
 #!/usr/bin/env bash
 
 set -euo pipefail
@@ -16,48 +9,60 @@ source "$SCRIPT_DIR/common.sh"
 require_root
 require_whiptail
 
-show_status() {
+JAIL_LOCAL="/etc/fail2ban/jail.local"
+
+show_fail2ban_status() {
     local tmp_file
     tmp_file=$(mktemp)
 
     {
-        echo "===== unattended-upgrades status ====="
-        systemctl status unattended-upgrades --no-pager
+        echo "===== fail2ban-client status ====="
+        fail2ban-client status || true
         echo
-        echo "===== enabled timers ====="
-        systemctl list-timers apt*
+        echo "===== fail2ban-client status sshd ====="
+        fail2ban-client status sshd || true
     } > "$tmp_file" 2>&1
 
-    textbox_file "Auto Updates Status" "$tmp_file"
+    textbox_file "Fail2Ban Status" "$tmp_file"
     rm -f "$tmp_file"
 }
 
 main() {
+    local ssh_port
 
-    if ! yes_no_box "Automatic Security Updates" "Automatische Security Updates aktivieren?\n\nDies installiert 'unattended-upgrades'."; then
+    if ! yes_no_box "Fail2Ban" "Fail2Ban fuer SSH einrichten?\n\nSchuetzt gegen Brute-Force-Angriffe auf SSH."; then
         exit 0
     fi
 
+    ssh_port=$(prompt_port) || exit 0
+
     clear
-    echo "Installiere unattended-upgrades..."
+    echo "Konfiguriere Fail2Ban..."
     echo
 
-    apt update
-    apt install -y unattended-upgrades apt-listchanges
+    cat > "$JAIL_LOCAL" <<EOF
+[DEFAULT]
+bantime = 1h
+findtime = 10m
+maxretry = 5
+backend = systemd
 
+[sshd]
+enabled = true
+port = ${ssh_port}
+logpath = %(sshd_log)s
+EOF
+
+    echo "Konfiguration geschrieben nach: $JAIL_LOCAL"
     echo
-    echo "Aktiviere automatische Updates..."
 
-    dpkg-reconfigure -plow unattended-upgrades
+    systemctl enable fail2ban
+    systemctl restart fail2ban
 
-    systemctl enable unattended-upgrades
-    systemctl restart unattended-upgrades
-
-    echo
-    echo "Automatische Updates aktiviert."
+    echo "Fail2Ban wurde gestartet."
     echo
 
-    show_status
+    show_fail2ban_status
 
     read -r -p "Press ENTER to return to menu..."
 }
