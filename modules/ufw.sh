@@ -8,6 +8,56 @@ require_root
 require_whiptail
 
 main() {
+    whiptail --title "UFW Firewall" \
+        --yesno \
+"UFW mit sicheren Standardregeln konfigurieren?
+
+  - deny incoming
+  - allow outgoing
+  - SSH-Port freigeben
+  - Firewall aktivieren
+
+Fortfahren?" 16 55 || exit 0
+
+    local ssh_port
+    ssh_port=$(prompt_port) || exit 0
+
+    clear
+    echo "Konfiguriere UFW..."
+    echo
+
+    ufw default deny incoming
+    ufw default allow outgoing
+    ufw allow "${ssh_port}/tcp"
+
+    if [[ "$ssh_port" != "22" ]]; then
+        whiptail --title "Port 22" \
+            --yesno "Soll Port 22/tcp entfernt werden?" 10 50 && \
+            ufw delete allow 22/tcp >/dev/null 2>&1 || true
+    fi
+
+    ufw --force enable
+
+    local tmp_file
+    tmp_file=$(mktemp)
+    ufw status verbose > "$tmp_file" 2>&1 || true
+    textbox_file "UFW Status" "$tmp_file"
+    rm -f "$tmp_file"
+
+    msg_box "UFW Firewall" "UFW wurde erfolgreich konfiguriert."
+    exit 0
+}
+
+main "$@"#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
+
+require_root
+require_whiptail
+
+main() {
     local choice
     choice=$(
         whiptail --title "System Language" \
