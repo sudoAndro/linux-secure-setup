@@ -8,6 +8,54 @@ require_root
 require_whiptail
 
 main() {
+    whiptail --title "Automatic Security Updates" \
+        --yesno \
+"Automatische Security Updates aktivieren?
+
+Installiert 'unattended-upgrades' und
+aktiviert den Dienst.
+
+Fortfahren?" 13 55 || exit 0
+
+    clear
+    echo "Installiere unattended-upgrades..."
+    echo
+
+    DEBIAN_FRONTEND=noninteractive apt update
+    DEBIAN_FRONTEND=noninteractive apt install -y unattended-upgrades apt-listchanges
+
+    DEBIAN_FRONTEND=noninteractive dpkg-reconfigure -plow unattended-upgrades
+
+    systemctl enable unattended-upgrades
+    systemctl restart unattended-upgrades
+    sleep 1
+
+    local tmp_file
+    tmp_file=$(mktemp)
+    {
+        echo "===== unattended-upgrades Status ====="
+        systemctl status unattended-upgrades --no-pager || true
+        echo
+        echo "===== Aktive Timers ====="
+        systemctl list-timers apt* || true
+    } > "$tmp_file" 2>&1
+    textbox_file "Auto Updates Status" "$tmp_file"
+    rm -f "$tmp_file"
+
+    msg_box "Auto Updates" "Automatische Security Updates wurden aktiviert."
+    exit 0
+}
+
+main "$@"#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
+
+require_root
+require_whiptail
+
+main() {
     if ! yes_no_box "Automatic Security Updates" "Automatische Security Updates aktivieren?\n\nInstalliert 'unattended-upgrades' und aktiviert den Dienst."; then
         exit 0
     fi
