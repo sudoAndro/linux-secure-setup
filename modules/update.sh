@@ -6,6 +6,35 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
 source "$SCRIPT_DIR/common.sh"
 
+ensure_ui_environment
+require_root
+require_whiptail
+
+main() {
+    if ! yes_no_box "System Update" "System jetzt aktualisieren?\n\napt update && apt upgrade -y"; then
+        exit 0
+    fi
+
+    clear
+    echo "System wird aktualisiert..."
+    echo
+
+    apt update && apt upgrade -y
+
+    echo
+    echo "Update abgeschlossen."
+
+    msg_box "System Update" "Update wurde erfolgreich abgeschlossen."
+}
+
+main "$@"#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/common.sh"
+
 require_root
 require_whiptail
 
