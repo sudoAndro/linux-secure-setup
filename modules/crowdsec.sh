@@ -8,6 +8,57 @@ require_root
 require_whiptail
 
 main() {
+    whiptail --title "CrowdSec" \
+        --yesno \
+"CrowdSec installieren?
+
+Erkennt Angriffe und blockiert bekannte
+Angreifer automatisch.
+
+Fortfahren?" 13 55 || exit 0
+
+    clear
+    echo "Installiere CrowdSec..."
+    echo
+
+    curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.deb.sh | bash
+    DEBIAN_FRONTEND=noninteractive apt install -y crowdsec crowdsec-firewall-bouncer-iptables
+
+    systemctl enable crowdsec
+    systemctl restart crowdsec
+
+    echo
+    echo "Installiere SSH-Schutz..."
+    cscli collections install crowdsecurity/sshd
+    systemctl restart crowdsec
+    sleep 1
+
+    local tmp_file
+    tmp_file=$(mktemp)
+    {
+        echo "===== CrowdSec Status ====="
+        systemctl status crowdsec --no-pager || true
+        echo
+        echo "===== Metrics ====="
+        cscli metrics || true
+    } > "$tmp_file" 2>&1
+    textbox_file "CrowdSec Status" "$tmp_file"
+    rm -f "$tmp_file"
+
+    msg_box "CrowdSec" "CrowdSec wurde erfolgreich installiert."
+    exit 0
+}
+
+main "$@"#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
+
+require_root
+require_whiptail
+
+main() {
     if ! yes_no_box "CrowdSec" "CrowdSec installieren?\n\nCrowdSec erkennt Angriffe und blockiert bekannte Angreifer automatisch."; then
         exit 0
     fi
