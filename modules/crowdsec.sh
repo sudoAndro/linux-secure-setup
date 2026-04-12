@@ -2,238 +2,89 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/common.sh"
-
-require_root
-require_whiptail
-
-main() {
-    whiptail --title "CrowdSec" \
-        --yesno \
-"CrowdSec installieren?
-
-Erkennt Angriffe und blockiert bekannte
-Angreifer automatisch.
-
-Fortfahren?" 13 55 || exit 0
-
-    clear
-    echo "Installiere CrowdSec..."
-    echo
-
-    curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.deb.sh | bash
-    DEBIAN_FRONTEND=noninteractive apt install -y crowdsec crowdsec-firewall-bouncer-iptables
-
-    systemctl enable crowdsec
-    systemctl restart crowdsec
-
-    echo
-    echo "Installiere SSH-Schutz..."
-    cscli collections install crowdsecurity/sshd
-    systemctl restart crowdsec
-    sleep 1
-
-    local tmp_file
-    tmp_file=$(mktemp)
-    {
-        echo "===== CrowdSec Status ====="
-        systemctl status crowdsec --no-pager || true
-        echo
-        echo "===== Metrics ====="
-        cscli metrics || true
-    } > "$tmp_file" 2>&1
-    textbox_file "CrowdSec Status" "$tmp_file"
-    rm -f "$tmp_file"
-
-    msg_box "CrowdSec" "CrowdSec wurde erfolgreich installiert."
-    exit 0
-}
-
-main "$@"#!/usr/bin/env bash
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/common.sh"
-
-require_root
-require_whiptail
-
-main() {
-    if ! yes_no_box "CrowdSec" "CrowdSec installieren?\n\nCrowdSec erkennt Angriffe und blockiert bekannte Angreifer automatisch."; then
-        exit 0
-    fi
-
-    clear
-    echo "Installiere CrowdSec..."
-    echo
-
-    curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.deb.sh | bash
-    apt install -y crowdsec crowdsec-firewall-bouncer-iptables
-
-    systemctl enable crowdsec
-    systemctl restart crowdsec
-
-    echo
-    echo "Installiere SSH-Schutz..."
-    cscli collections install crowdsecurity/sshd
-    systemctl restart crowdsec
-
-    sleep 1
-
-    local tmp_file
-    tmp_file=$(mktemp)
-    {
-        echo "===== CrowdSec Status ====="
-        systemctl status crowdsec --no-pager || true
-        echo
-        echo "===== CrowdSec Metrics ====="
-        cscli metrics || true
-    } > "$tmp_file" 2>&1
-    textbox_file "CrowdSec Status" "$tmp_file"
-    rm -f "$tmp_file"
-
-    msg_box "CrowdSec" "CrowdSec wurde erfolgreich installiert."
-}
-
-main "$@"#!/usr/bin/env bash
-
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
 source "$SCRIPT_DIR/common.sh"
 
+ensure_ui_environment
 require_root
 require_whiptail
 
-JAIL_LOCAL="/etc/fail2ban/jail.local"
 
-show_fail2ban_status() {
-    local tmp_file
-    tmp_file=$(mktemp)
+install_crowdsec_packages() {
 
-    {
-        echo "===== fail2ban-client status ====="
-        fail2ban-client status || true
-        echo
-        echo "===== fail2ban-client status sshd ====="
-        fail2ban-client status sshd || true
-    } > "$tmp_file" 2>&1
+    local bouncer_pkg=""
 
-    textbox_file "Fail2Ban Status" "$tmp_file"
-    rm -f "$tmp_file"
-}
+    msg_box "CrowdSec" "Installiere CrowdSec..."
 
-main() {
-    local ssh_port
+    apt update
 
-    if ! yes_no_box "Fail2Ban" "Fail2Ban fuer SSH einrichten?\n\nSchuetzt gegen Brute-Force-Angriffe auf SSH."; then
-        exit 0
+    if apt-cache show crowdsec-firewall-bouncer >/dev/null 2>&1; then
+        bouncer_pkg="crowdsec-firewall-bouncer"
+
+    elif apt-cache show crowdsec-firewall-bouncer-nftables >/dev/null 2>&1; then
+        bouncer_pkg="crowdsec-firewall-bouncer-nftables"
+
+    elif apt-cache show crowdsec-firewall-bouncer-iptables >/dev/null 2>&1; then
+        bouncer_pkg="crowdsec-firewall-bouncer-iptables"
+
+    else
+        msg_box "Fehler" "Kein kompatibles CrowdSec Firewall-Bouncer Paket gefunden."
+        exit 1
     fi
 
-    ssh_port=$(prompt_port) || exit 0
-
-    clear
-    echo "Konfiguriere Fail2Ban..."
-    echo
-
-    cat > "$JAIL_LOCAL" <<EOF
-[DEFAULT]
-bantime = 1h
-findtime = 10m
-maxretry = 5
-backend = systemd
-
-[sshd]
-enabled = true
-port = ${ssh_port}
-logpath = %(sshd_log)s
-EOF
-
-    echo "Konfiguration geschrieben nach: $JAIL_LOCAL"
-    echo
-
-    systemctl enable fail2ban
-    systemctl restart fail2ban
-
-    echo "Fail2Ban wurde gestartet."
-    echo
-
-    show_fail2ban_status
-
-    read -r -p "Press ENTER to return to menu..."
+    apt install -y crowdsec "$bouncer_pkg"
 }
 
-main "$@"#!/bin/bash
 
-clear
-echo "CrowdSec Modul kommt später."
-echo
-read -p "Enter drücken..."
+start_services() {
 
-#!/usr/bin/env bash
+    msg_box "CrowdSec" "Starte CrowdSec Dienste..."
 
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=/dev/null
-source "$SCRIPT_DIR/common.sh"
-
-require_root
-require_whiptail
-
-show_crowdsec_status() {
-
-    local tmp_file
-    tmp_file=$(mktemp)
-
-    {
-        echo "===== CrowdSec Status ====="
-        echo
-        systemctl status crowdsec --no-pager
-        echo
-        echo "===== CrowdSec Metrics ====="
-        cscli metrics || true
-    } > "$tmp_file" 2>&1
-
-    textbox_file "CrowdSec Status" "$tmp_file"
-    rm -f "$tmp_file"
+    systemctl enable --now crowdsec
+    systemctl enable --now crowdsec-firewall-bouncer
 }
 
-install_crowdsec() {
 
-    echo "Installing CrowdSec..."
+verify_installation() {
 
-    curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.deb.sh | bash
+    if systemctl is-active --quiet crowdsec && systemctl is-active --quiet crowdsec-firewall-bouncer; then
 
-    apt install -y crowdsec crowdsec-firewall-bouncer-iptables
+        msg_box "CrowdSec installiert" \
+        "CrowdSec wurde erfolgreich installiert.\n\n\
+Service Status:\n\
+crowdsec: aktiv\n\
+firewall-bouncer: aktiv\n\n\
+Logs anzeigen:\n\
+journalctl -u crowdsec\n\
+journalctl -u crowdsec-firewall-bouncer"
 
-    systemctl enable crowdsec
-    systemctl restart crowdsec
+    else
+
+        msg_box "Fehler" \
+        "CrowdSec scheint nicht korrekt zu laufen.\n\n\
+Bitte prüfen:\n\
+systemctl status crowdsec\n\
+systemctl status crowdsec-firewall-bouncer"
+
+        exit 1
+    fi
 }
+
 
 main() {
 
-    if ! yes_no_box "CrowdSec" "CrowdSec installieren?\n\nCrowdSec erkennt Angriffe und blockiert bekannte Angreifer."; then
-        exit 0
+    if ! yes_no_box "CrowdSec Installation" \
+    "CrowdSec installiert einen Intrusion Detection Dienst.\n\n\
+Dieser erkennt Angriffe und blockiert IPs automatisch über die Firewall.\n\n\
+Soll CrowdSec installiert werden?"; then
+        return
     fi
 
-    clear
-    install_crowdsec
+    install_crowdsec_packages
 
-    echo
-    echo "Installiere SSH Schutz..."
+    start_services
 
-    cscli collections install crowdsecurity/sshd
-
-    systemctl restart crowdsec
-
-    echo
-    echo "CrowdSec erfolgreich installiert."
-
-    show_crowdsec_status
-
-    read -r -p "Press ENTER to return to menu..."
+    verify_installation
 }
 
-main "$@"
+main
