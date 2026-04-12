@@ -19,8 +19,6 @@ echo
 
 read -rp "Press ENTER to start setup..."
 
-#!/usr/bin/env bash
-set -euo pipefail
 
 REPO_URL="https://github.com/sudoAndro/linux-secure-setup.git"
 INSTALL_DIR="/opt/linux-secure-setup"

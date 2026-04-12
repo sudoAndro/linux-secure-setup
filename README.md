@@ -1,22 +1,8 @@
 # Linux Secure Setup
 
-![Linux](https://img.shields.io/badge/Linux-Debian%20%7C%20Ubuntu%20%7C%20Kali-blue)
-![Bash](https://img.shields.io/badge/Bash-Script-green)
-![Security](https://img.shields.io/badge/Purpose-Linux%20Hardening-red)
+Interactive Linux security hardening toolkit for Debian-based systems.
 
-Linux Secure Setup is an interactive security hardening toolkit for Debian-based Linux systems.
-
-It provides a menu-driven interface similar to **raspi-config** and helps administrators apply common Linux server security best practices quickly and safely.
-
-The goal is to simplify and automate the first hardening steps on a fresh Linux installation.
-
----
-
-## Preview
-
-![Linux Secure Setup Menu](images/menu.png)
-
----
+Linux Secure Setup provides a menu-driven interface to configure common security settings for fresh Linux installations, inspired by tools like `raspi-config`.
 
 ## Features
 
@@ -25,33 +11,55 @@ The goal is to simplify and automate the first hardening steps on a fresh Linux 
 - System language configuration
 - Timezone configuration
 - SSH configuration and hardening
-- Automatic SSH socket detection and handling
-- SSH port verification
-- Automatic rollback if SSH configuration fails
-- UFW firewall configuration
-- Fail2Ban installation and configuration
-- CrowdSec integration
+- UFW firewall setup
+- Fail2Ban installation
+- CrowdSec installation
 - Automatic security updates
 - Kernel hardening
-- System cleanup
-- Package integrity verification with `debsums`
-
----
+- Cleanup tools
+- Package integrity checks
 
 ## Supported Systems
-
-Linux Secure Setup works on most Debian-based systems, including:
 
 - Debian
 - Ubuntu
 - Kali Linux
 - Raspberry Pi OS
 
----
-
 ## Installation
 
-### Quick install
+Run:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sudoAndro/linux-secure-setup/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/sudoAndro/linux-secure-setup/main/install.sh | sudo bash
+
+##Start manually
+
+- sudo bash /opt/linux-secure-setup/menu.sh
+
+- Or, after installation:
+
+- linux-secure-setup
+
+##Project Structure
+
+linux-secure-setup
+├── install.sh
+├── menu.sh
+├── README.md
+├── LICENSE
+├── modules/
+└── images/
+
+##Important SSH Safety Note
+
+The SSH module is designed to reduce lockout risk:
+
+- create or reuse an admin user
+- insert a public key manually
+- change SSH port
+- disable password authentication
+- disable root login
+- test the login before finalizing
+- rollback configuration if login fails
+
