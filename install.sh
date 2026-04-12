@@ -4,6 +4,7 @@ set -euo pipefail
 clear
 
 echo -e "\033[1;32m"
+<<<<<<< HEAD
 cat << "BANNER"
  _     _                       ____                           
 | |   (_)_ __  _   ___  __    / ___|  ___  ___ _   _ _ __ ___ 
@@ -12,7 +13,21 @@ cat << "BANNER"
 |_____|_|_| |_|\__,_/_/\_\   |____/ \___|\___|\__,_|_|  \___|
 BANNER
 echo -e "\033[1;31mLinux Secure Setup: Created by sudoAndro\033[0m"
+=======
+cat << "EOF"
+ _     _                    ____                             ____       _
+| |   (_)_ __  _   ___  __ / ___|  ___  ___ _   _ _ __ ___  / ___|  ___| |_ _   _ _ __
+| |   | | '_ \| | | \ \/ / \___ \ / _ \/ __| | | | '__/ _ \ \___ \ / _ \ __| | | | '_ \
+| |___| | | | | |_| |>  <   ___) |  __/ (__| |_| | | |  __/  ___) |  __/ |_| |_| | |_) |
+|_____|_|_| |_|\__,_/_/\_\ |____/ \___|\___|\__,_|_|  \___| |____/ \___|\__|\__,_| .__/
+                                                                                 |_|
+EOF
+echo -e "\033[1;31m"
+echo "                         Linux Secure Setup Toolkit - Created by sudoAndro"
+echo -e "\033[0m"
+>>>>>>> 3ce9656 (Fix installer, improve README and polish SSH module)
 echo
+
 read -rp "Press ENTER to start setup..."
 
 REPO_URL="https://github.com/sudoAndro/linux-secure-setup.git"
@@ -25,15 +40,23 @@ print_warn() { echo -e "\e[1;33m[WARN]\e[0m $1"; }
 print_err()  { echo -e "\e[1;31m[ERR ]\e[0m $1"; }
 
 require_root() {
+<<<<<<< HEAD
     if [[ "${EUID}" -ne 0 ]]; then
         print_err "Dieses Script muss mit sudo oder als root ausgeführt werden."
         exit 1
     fi
+=======
+  if [[ "${EUID}" -ne 0 ]]; then
+    print_err "Dieses Script muss mit sudo oder als root ausgeführt werden."
+    exit 1
+  fi
+>>>>>>> 3ce9656 (Fix installer, improve README and polish SSH module)
 }
 
 check_dependencies() {
     local missing=()
 
+<<<<<<< HEAD
     for cmd in git bash; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
             missing+=("$cmd")
@@ -44,6 +67,11 @@ check_dependencies() {
         print_info "Fehlende Pakete werden installiert: ${missing[*]}"
         apt update
         apt install -y "${missing[@]}"
+=======
+  for cmd in git bash curl; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+      missing+=("$cmd")
+>>>>>>> 3ce9656 (Fix installer, improve README and polish SSH module)
     fi
 
     if ! command -v whiptail >/dev/null 2>&1; then
@@ -103,6 +131,7 @@ run_menu() {
         exit 1
     fi
 
+<<<<<<< HEAD
     print_ok "Installation abgeschlossen."
     print_info "Starte Linux Secure Setup ..."
     cd "$INSTALL_DIR"
@@ -116,6 +145,21 @@ main() {
     fix_permissions
     create_launcher
     run_menu
+=======
+  print_ok "Installation abgeschlossen."
+  print_info "Starte Linux Secure Setup ..."
+  cd "$INSTALL_DIR"
+  exec bash ./menu.sh
+}
+
+main() {
+  require_root
+  check_dependencies
+  install_or_update_repo
+  fix_permissions
+  create_launcher
+  run_menu
+>>>>>>> 3ce9656 (Fix installer, improve README and polish SSH module)
 }
 
 main "$@"

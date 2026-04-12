@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
 source "$SCRIPT_DIR/common.sh"
 
+ensure_ssh_server_installed
 require_root
 require_whiptail
 
@@ -27,6 +28,7 @@ set_sshd_option() {
 
 restart_ssh_service() {
     if systemctl list-unit-files | grep -q '^ssh\.service'; then
+<<<<<<< HEAD
         systemctl restart ssh
         return 0
     fi
@@ -35,6 +37,44 @@ restart_ssh_service() {
         systemctl restart sshd
         return 0
     fi
+=======
+       systemctl restart ssh
+       return 0
+    fi
+
+    if systemctl list-unit-files | grep -q '^sshd\.service'; then
+       systemctl restart sshd
+       return 0
+    fi
+
+       msg_box "Warnung" "Kein Dienstname ssh oder sshd erkannt.\n\nBitte SSH-Dienst manuell neu starten."
+       return 1
+}
+
+verify_ssh_port() {
+    local expected_port="$1"
+    local listening
+    local tmp_file
+
+    listening=$(ss -tulpn 2>/dev/null | grep ssh || true)
+
+    if echo "$listening" | grep -Eq "[:.]${expected_port}[[:space:]]"; then
+        return 0
+    fi
+
+    tmp_file=$(mktemp)
+
+    {
+        echo "SSH hört NICHT auf dem erwarteten Port ${expected_port}."
+        echo
+        echo "Aktuelle SSH Listener:"
+        echo
+        echo "$listening"
+    } > "$tmp_file"
+
+    textbox_file "SSH Port Fehler" "$tmp_file"
+    rm -f "$tmp_file"
+>>>>>>> 3ce9656 (Fix installer, improve README and polish SSH module)
 
     msg_box "Warnung" "Kein SSH-Dienst gefunden.\n\nBitte manuell neu starten."
     return 1
@@ -54,6 +94,43 @@ step_user() {
         --inputbox "Benutzernamen eingeben:" 10 50 "" \
         3>&1 1>&2 2>&3) || return 1
 
+<<<<<<< HEAD
+=======
+    ports=$(ss -tulpn 2>/dev/null | grep ssh || true)
+
+    tmp_file=$(mktemp)
+
+    if [[ -n "$ports" ]]; then
+        printf '%s\n' "$ports" > "$tmp_file"
+    else
+        echo "Es konnten keine aktiven SSH-Listen-Ports angezeigt werden." > "$tmp_file"
+    fi
+
+    textbox_file "SSH Listen Ports" "$tmp_file"
+    rm -f "$tmp_file"
+}
+
+ensure_ssh_server_installed() {
+    if ! command -v sshd >/dev/null 2>&1; then
+        if yes_no_box "OpenSSH fehlt" "openssh-server ist nicht installiert.\n\nSoll es jetzt installiert werden?"; then
+            apt update
+            apt install -y openssh-server
+        else
+            msg_box "Abgebrochen" "Ohne openssh-server kann dieses Modul nicht fortfahren."
+            exit 0
+        fi
+    fi
+}
+
+main() {
+    local username
+    local auth_keys
+    local port
+
+    msg_box "SSH Setup" "Dieses Modul richtet Admin-User, SSH-Key und SSH-Hardening ein.\n\nRoot wird erst ganz am Schluss deaktiviert."
+
+    username=$(select_or_create_user) || exit 0
+>>>>>>> 3ce9656 (Fix installer, improve README and polish SSH module)
     username=$(printf '%s' "$username" | tr -cd 'a-zA-Z0-9_-')
 
     if [[ -z "$username" ]]; then
