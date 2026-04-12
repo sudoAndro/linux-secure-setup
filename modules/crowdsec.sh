@@ -9,82 +9,88 @@ ensure_ui_environment
 require_root
 require_whiptail
 
-
 install_crowdsec_packages() {
-
-    local bouncer_pkg=""
-
-    msg_box "CrowdSec" "Installiere CrowdSec..."
+    msg_box "CrowdSec" "Installiere CrowdSec und Firewall-Bouncer..."
 
     apt update
 
-    if apt-cache show crowdsec-firewall-bouncer >/dev/null 2>&1; then
-        bouncer_pkg="crowdsec-firewall-bouncer"
-
-    elif apt-cache show crowdsec-firewall-bouncer-nftables >/dev/null 2>&1; then
-        bouncer_pkg="crowdsec-firewall-bouncer-nftables"
-
-    elif apt-cache show crowdsec-firewall-bouncer-iptables >/dev/null 2>&1; then
-        bouncer_pkg="crowdsec-firewall-bouncer-iptables"
-
-    else
-        msg_box "Fehler" "Kein kompatibles CrowdSec Firewall-Bouncer Paket gefunden."
+    if ! apt-cache show crowdsec >/dev/null 2>&1; then
+        msg_box "Fehler" "Das Paket 'crowdsec' wurde in den konfigurierten Paketquellen nicht gefunden."
         exit 1
     fi
 
-    apt install -y crowdsec "$bouncer_pkg"
+    if ! apt-cache show crowdsec-firewall-bouncer >/dev/null 2>&1; then
+        msg_box "Fehler" "Das Paket 'crowdsec-firewall-bouncer' wurde in den konfigurierten Paketquellen nicht gefunden."
+        exit 1
+    fi
+
+    apt install -y crowdsec crowdsec-firewall-bouncer
 }
 
+enable_collections() {
+    msg_box "CrowdSec" "Aktiviere empfohlene Collections fuer Linux und SSH..."
+
+    cscli collections install crowdsecurity/linux >/dev/null 2>&1 || true
+    cscli collections install crowdsecurity/sshd >/dev/null 2>&1 || true
+}
 
 start_services() {
-
     msg_box "CrowdSec" "Starte CrowdSec Dienste..."
 
     systemctl enable --now crowdsec
     systemctl enable --now crowdsec-firewall-bouncer
 }
 
-
 verify_installation() {
+    local crowdsec_status="inaktiv"
+    local bouncer_status="inaktiv"
 
-    if systemctl is-active --quiet crowdsec && systemctl is-active --quiet crowdsec-firewall-bouncer; then
+    if systemctl is-active --quiet crowdsec; then
+        crowdsec_status="aktiv"
+    fi
 
+    if systemctl is-active --quiet crowdsec-firewall-bouncer; then
+        bouncer_status="aktiv"
+    fi
+
+    if [[ "$crowdsec_status" == "aktiv" && "$bouncer_status" == "aktiv" ]]; then
         msg_box "CrowdSec installiert" \
-        "CrowdSec wurde erfolgreich installiert.\n\n\
-Service Status:\n\
-crowdsec: aktiv\n\
-firewall-bouncer: aktiv\n\n\
-Logs anzeigen:\n\
-journalctl -u crowdsec\n\
-journalctl -u crowdsec-firewall-bouncer"
+"CrowdSec wurde erfolgreich installiert.
 
-    else
+Status:
+- crowdsec: $crowdsec_status
+- firewall-bouncer: $bouncer_status
 
-        msg_box "Fehler" \
-        "CrowdSec scheint nicht korrekt zu laufen.\n\n\
-Bitte prüfen:\n\
-systemctl status crowdsec\n\
+Pruefen mit:
+systemctl status crowdsec
 systemctl status crowdsec-firewall-bouncer"
+    else
+        msg_box "Fehler" \
+"CrowdSec scheint nicht korrekt zu laufen.
 
+Status:
+- crowdsec: $crowdsec_status
+- firewall-bouncer: $bouncer_status
+
+Bitte pruefen mit:
+systemctl status crowdsec
+systemctl status crowdsec-firewall-bouncer"
         exit 1
     fi
 }
 
-
 main() {
-
     if ! yes_no_box "CrowdSec Installation" \
-    "CrowdSec installiert einen Intrusion Detection Dienst.\n\n\
-Dieser erkennt Angriffe und blockiert IPs automatisch über die Firewall.\n\n\
+"CrowdSec erkennt Angriffe und blockiert boesartige IP-Adressen automatisch ueber die Firewall.
+
 Soll CrowdSec installiert werden?"; then
-        return
+        exit 0
     fi
 
     install_crowdsec_packages
-
+    enable_collections
     start_services
-
     verify_installation
 }
 
-main
+main "$@"
