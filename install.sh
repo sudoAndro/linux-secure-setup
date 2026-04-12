@@ -20,6 +20,9 @@ echo
 read -rp "Press ENTER to start setup..."
 
 
+#!/usr/bin/env bash
+set -euo pipefail
+
 REPO_URL="https://github.com/sudoAndro/linux-secure-setup.git"
 INSTALL_DIR="/opt/linux-secure-setup"
 
@@ -69,11 +72,9 @@ check_dependencies() {
 install_or_update_repo() {
     if [[ -d "$INSTALL_DIR/.git" ]]; then
         print_info "Bestehende Installation gefunden. Aktualisiere Repository ..."
-
         git -C "$INSTALL_DIR" remote set-url origin "$REPO_URL"
         git -C "$INSTALL_DIR" fetch origin
         git -C "$INSTALL_DIR" reset --hard origin/main
-
         print_ok "Repository wurde aktualisiert."
     else
         if [[ -d "$INSTALL_DIR" ]]; then
