@@ -160,60 +160,29 @@ step_prepare_ssh_dir() {
 step_insert_key() {
     local username="$1"
     local auth_keys="$2"
-    local default_key_path
-    local pubkey_path
-    local pubkey_content
+    local first_line
 
-    default_key_path="/home/${SUDO_USER:-$USER}/.ssh/id_ed25519.pub"
+    msg_box "SSH Public Key" "Die Datei authorized_keys wird jetzt geoeffnet:\n\n$auth_keys\n\nFuege deinen Public Key aus Windows oder einem anderen System ein.\n\nSpeichern in nano:\nCTRL+O, Enter\nBeenden:\nCTRL+X"
 
-    clear >/dev/tty 2>/dev/null || true
-    echo >/dev/tty
-    echo "============================================================" >/dev/tty
-    echo " SSH Public Key" >/dev/tty
-    echo "============================================================" >/dev/tty
-    echo >/dev/tty
-    echo "Gib den PFAD zu deinem Public Key ein." >/dev/tty
-    echo "Beispiel:" >/dev/tty
-    echo "  $default_key_path" >/dev/tty
-    echo >/dev/tty
-    echo "Druecke einfach ENTER, um den Standardpfad zu verwenden." >/dev/tty
-    echo >/dev/tty
+    nano "$auth_keys" </dev/tty >/dev/tty 2>&1
 
-    read -r -p "Public-Key-Pfad [$default_key_path]: " pubkey_path < /dev/tty
-
-    if [[ -z "$pubkey_path" ]]; then
-        pubkey_path="$default_key_path"
-    fi
-
-    pubkey_path="$(printf '%s' "$pubkey_path" | tr -d '\r')"
-
-    if [[ ! -f "$pubkey_path" ]]; then
-        msg_box "Fehler" "Datei nicht gefunden:\n\n$pubkey_path"
+    if [[ ! -s "$auth_keys" ]]; then
+        msg_box "Fehler" "Die Datei authorized_keys ist leer.\n\nEs wurde kein Public Key gespeichert."
         return 1
     fi
 
-    pubkey_content="$(head -n 1 "$pubkey_path" | tr -d '\r')"
+    first_line="$(grep -m1 -E '^(ssh-ed25519|ssh-rsa|ecdsa-sha2-|sk-ssh-ed25519@openssh.com|sk-ecdsa-sha2-)' "$auth_keys" || true)"
 
-    if [[ -z "$pubkey_content" ]]; then
-        msg_box "Fehler" "Die Public-Key-Datei ist leer."
+    if [[ -z "$first_line" ]]; then
+        msg_box "Fehler" "Die Datei enthaelt keinen gueltigen OpenSSH Public Key.\n\nBitte oeffne das Modul erneut und fuege einen gueltigen Key ein."
         return 1
     fi
 
-    case "$pubkey_content" in
-        ssh-ed25519\ *|ssh-rsa\ *|ecdsa-sha2-*\ *|sk-ssh-ed25519@openssh.com\ *|sk-ecdsa-sha2-*\ *)
-            ;;
-        *)
-            msg_box "Fehler" "Die Datei sieht nicht wie ein gueltiger OpenSSH Public Key aus."
-            return 1
-            ;;
-    esac
-
-    mkdir -p "$(dirname "$auth_keys")"
-    printf '%s\n' "$pubkey_content" > "$auth_keys"
     chown "$username:$username" "$auth_keys"
     chmod 600 "$auth_keys"
 
-    msg_box "SSH Key" "Public Key wurde erfolgreich uebernommen:\n\n$pubkey_path"
+    msg_box "SSH Key" "Public Key wurde gespeichert."
+    return 0
 }
 
 step_harden_ssh() {
@@ -298,20 +267,15 @@ Fortfahren?"; then
         exit 1
     fi
 
-    if ! yes_no_box "Root Login deaktivieren" \
-"SSH lauscht erfolgreich auf Port $port.\n\nSoll PermitRootLogin no gesetzt bleiben und root per SSH gesperrt bleiben?"; then
-        set_sshd_option "PermitRootLogin" "yes"
-        if sshd -t; then
-            restart_ssh_service || true
-            msg_box "Hinweis" "Root-Login wurde wieder erlaubt."
-        else
-            rollback_ssh_config
-            msg_box "Fehler" "Konfiguration ungueltig. Backup wurde wiederhergestellt."
-            exit 1
-        fi
-    fi
+    msg_box "Wichtig" "Teste JETZT in einem ZWEITEN Terminal den neuen Login.\n\nBeispiel:\nssh -p $port $username@SERVER-IP\n\nDie aktuelle Sitzung offen lassen.\n\nErst wenn das funktioniert, darf Root deaktiviert werden."
 
-    msg_box "Erfolg" "SSH wurde erfolgreich konfiguriert.\n\nUser: $username\nPort: $port\n\nTeste jetzt in einem ZWEITEN Terminal zuerst den Login, bevor du die aktuelle Sitzung schliesst."
+    if yes_no_box "SSH Test" "Hat der Login mit dem SSH-Key erfolgreich funktioniert?"; then
+        msg_box "Erfolg" "SSH wurde erfolgreich konfiguriert.\n\nUser: $username\nPort: $port\n\nRoot-Login bleibt deaktiviert."
+    else
+        rollback_ssh_config
+        msg_box "Rollback ausgefuehrt" "Die SSH-Konfiguration wurde wiederhergestellt.\n\nBitte pruefe den Public Key und versuche es erneut."
+        exit 1
+    fi
 }
 
 main "$@"
