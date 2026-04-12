@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
 source "$SCRIPT_DIR/common.sh"
 
-ensure_ssh_server_installed
+ensure_ui_environment
 require_root
 require_whiptail
 
@@ -26,9 +26,20 @@ set_sshd_option() {
     fi
 }
 
+ensure_ssh_server_installed() {
+    if ! command -v sshd >/dev/null 2>&1; then
+        if yes_no_box "OpenSSH fehlt" "openssh-server ist nicht installiert.\n\nSoll es jetzt installiert werden?"; then
+            apt update
+            apt install -y openssh-server
+        else
+            msg_box "Abgebrochen" "Ohne openssh-server kann dieses Modul nicht fortfahren."
+            exit 0
+        fi
+    fi
+}
+
 restart_ssh_service() {
     if systemctl list-unit-files | grep -q '^ssh\.service'; then
-<<<<<<< HEAD
         systemctl restart ssh
         return 0
     fi
@@ -37,18 +48,9 @@ restart_ssh_service() {
         systemctl restart sshd
         return 0
     fi
-=======
-       systemctl restart ssh
-       return 0
-    fi
 
-    if systemctl list-unit-files | grep -q '^sshd\.service'; then
-       systemctl restart sshd
-       return 0
-    fi
-
-       msg_box "Warnung" "Kein Dienstname ssh oder sshd erkannt.\n\nBitte SSH-Dienst manuell neu starten."
-       return 1
+    msg_box "Warnung" "Kein Dienstname ssh oder sshd erkannt.\n\nBitte SSH-Dienst manuell neu starten."
+    return 1
 }
 
 verify_ssh_port() {
@@ -56,16 +58,15 @@ verify_ssh_port() {
     local listening
     local tmp_file
 
-    listening=$(ss -tulpn 2>/dev/null | grep ssh || true)
+    listening="$(ss -tulpn 2>/dev/null | grep ssh || true)"
 
     if echo "$listening" | grep -Eq "[:.]${expected_port}[[:space:]]"; then
         return 0
     fi
 
-    tmp_file=$(mktemp)
-
+    tmp_file="$(mktemp)"
     {
-        echo "SSH hört NICHT auf dem erwarteten Port ${expected_port}."
+        echo "SSH hoert NICHT auf dem erwarteten Port ${expected_port}."
         echo
         echo "Aktuelle SSH Listener:"
         echo
@@ -74,9 +75,7 @@ verify_ssh_port() {
 
     textbox_file "SSH Port Fehler" "$tmp_file"
     rm -f "$tmp_file"
->>>>>>> 3ce9656 (Fix installer, improve README and polish SSH module)
 
-    msg_box "Warnung" "Kein SSH-Dienst gefunden.\n\nBitte manuell neu starten."
     return 1
 }
 
@@ -90,48 +89,8 @@ rollback_ssh_config() {
 step_user() {
     local username password password2
 
-    username=$(whiptail --title "Admin User" \
-        --inputbox "Benutzernamen eingeben:" 10 50 "" \
-        3>&1 1>&2 2>&3) || return 1
-
-<<<<<<< HEAD
-=======
-    ports=$(ss -tulpn 2>/dev/null | grep ssh || true)
-
-    tmp_file=$(mktemp)
-
-    if [[ -n "$ports" ]]; then
-        printf '%s\n' "$ports" > "$tmp_file"
-    else
-        echo "Es konnten keine aktiven SSH-Listen-Ports angezeigt werden." > "$tmp_file"
-    fi
-
-    textbox_file "SSH Listen Ports" "$tmp_file"
-    rm -f "$tmp_file"
-}
-
-ensure_ssh_server_installed() {
-    if ! command -v sshd >/dev/null 2>&1; then
-        if yes_no_box "OpenSSH fehlt" "openssh-server ist nicht installiert.\n\nSoll es jetzt installiert werden?"; then
-            apt update
-            apt install -y openssh-server
-        else
-            msg_box "Abgebrochen" "Ohne openssh-server kann dieses Modul nicht fortfahren."
-            exit 0
-        fi
-    fi
-}
-
-main() {
-    local username
-    local auth_keys
-    local port
-
-    msg_box "SSH Setup" "Dieses Modul richtet Admin-User, SSH-Key und SSH-Hardening ein.\n\nRoot wird erst ganz am Schluss deaktiviert."
-
-    username=$(select_or_create_user) || exit 0
->>>>>>> 3ce9656 (Fix installer, improve README and polish SSH module)
-    username=$(printf '%s' "$username" | tr -cd 'a-zA-Z0-9_-')
+    username="$(input_box "Admin User" "Benutzernamen eingeben:" "")" || return 1
+    username="$(printf '%s' "$username" | tr -cd 'a-zA-Z0-9_-')"
 
     if [[ -z "$username" ]]; then
         msg_box "Fehler" "Benutzername ist leer oder ungueltig."
@@ -147,13 +106,8 @@ main() {
         fi
     else
         while true; do
-            password=$(whiptail --title "Passwort" \
-                --passwordbox "Passwort fuer '$username' eingeben:" 10 50 \
-                3>&1 1>&2 2>&3) || return 1
-
-            password2=$(whiptail --title "Passwort bestaetigen" \
-                --passwordbox "Passwort erneut eingeben:" 10 50 \
-                3>&1 1>&2 2>&3) || return 1
+            password="$(password_box "Passwort" "Passwort fuer '$username' eingeben:")" || return 1
+            password2="$(password_box "Passwort bestaetigen" "Passwort erneut eingeben:")" || return 1
 
             if [[ -z "$password" ]]; then
                 msg_box "Fehler" "Passwort darf nicht leer sein."
@@ -206,19 +160,60 @@ step_prepare_ssh_dir() {
 step_insert_key() {
     local username="$1"
     local auth_keys="$2"
+    local default_key_path
+    local pubkey_path
+    local pubkey_content
 
-    msg_box "SSH Public Key" "nano wird jetzt geoeffnet.\n\nFuege deinen Public Key ein.\n\nSpeichern: CTRL+O dann Enter\nBeenden: CTRL+X"
+    default_key_path="/home/${SUDO_USER:-$USER}/.ssh/id_ed25519.pub"
 
-    nano "$auth_keys" </dev/tty >/dev/tty
+    clear >/dev/tty 2>/dev/null || true
+    echo >/dev/tty
+    echo "============================================================" >/dev/tty
+    echo " SSH Public Key" >/dev/tty
+    echo "============================================================" >/dev/tty
+    echo >/dev/tty
+    echo "Gib den PFAD zu deinem Public Key ein." >/dev/tty
+    echo "Beispiel:" >/dev/tty
+    echo "  $default_key_path" >/dev/tty
+    echo >/dev/tty
+    echo "Druecke einfach ENTER, um den Standardpfad zu verwenden." >/dev/tty
+    echo >/dev/tty
 
-    if [[ ! -s "$auth_keys" ]]; then
-        msg_box "Fehler" "authorized_keys ist leer.\n\nKein SSH-Key gespeichert."
+    read -r -p "Public-Key-Pfad [$default_key_path]: " pubkey_path < /dev/tty
+
+    if [[ -z "$pubkey_path" ]]; then
+        pubkey_path="$default_key_path"
+    fi
+
+    pubkey_path="$(printf '%s' "$pubkey_path" | tr -d '\r')"
+
+    if [[ ! -f "$pubkey_path" ]]; then
+        msg_box "Fehler" "Datei nicht gefunden:\n\n$pubkey_path"
         return 1
     fi
 
+    pubkey_content="$(head -n 1 "$pubkey_path" | tr -d '\r')"
+
+    if [[ -z "$pubkey_content" ]]; then
+        msg_box "Fehler" "Die Public-Key-Datei ist leer."
+        return 1
+    fi
+
+    case "$pubkey_content" in
+        ssh-ed25519\ *|ssh-rsa\ *|ecdsa-sha2-*\ *|sk-ssh-ed25519@openssh.com\ *|sk-ecdsa-sha2-*\ *)
+            ;;
+        *)
+            msg_box "Fehler" "Die Datei sieht nicht wie ein gueltiger OpenSSH Public Key aus."
+            return 1
+            ;;
+    esac
+
+    mkdir -p "$(dirname "$auth_keys")"
+    printf '%s\n' "$pubkey_content" > "$auth_keys"
     chown "$username:$username" "$auth_keys"
     chmod 600 "$auth_keys"
-    msg_box "SSH Key" "Public Key wurde gespeichert."
+
+    msg_box "SSH Key" "Public Key wurde erfolgreich uebernommen:\n\n$pubkey_path"
 }
 
 step_harden_ssh() {
@@ -240,6 +235,8 @@ step_harden_ssh() {
 }
 
 main() {
+    ensure_ssh_server_installed
+
     msg_box "SSH Setup" "Dieses Modul richtet folgendes ein:\n\n1. Admin-User anlegen oder nutzen\n2. SSH-Verzeichnis vorbereiten\n3. Public Key eintragen\n4. SSH haerten\n\nRoot wird erst ganz am Schluss gesperrt."
 
     step_user || exit 0
@@ -263,7 +260,7 @@ main() {
     local port
     port="$(prompt_port)" || exit 0
 
-    if ! whiptail --title "Bestaetigung" --yesno \
+    if ! yes_no_box "Bestaetigung" \
 "SSH-Konfiguration die gesetzt wird:
 
 User:                   $username
@@ -274,7 +271,7 @@ PubkeyAuthentication:   yes
 MaxAuthTries:           3
 LoginGraceTime:         30
 
-Fortfahren?" 20 70; then
+Fortfahren?"; then
         msg_box "Abgebrochen" "Keine Aenderungen vorgenommen."
         exit 0
     fi
@@ -295,30 +292,14 @@ Fortfahren?" 20 70; then
     restart_ssh_service || true
     sleep 1
 
-    local listening
-    listening="$(ss -tulpn 2>/dev/null | grep ssh || true)"
-
-    if ! echo "$listening" | grep -q ":${port}\b"; then
+    if ! verify_ssh_port "$port"; then
         rollback_ssh_config
-
-        local tmp_file
-        tmp_file="$(mktemp)"
-        {
-            echo "SSH hoert NICHT auf Port $port."
-            echo
-            echo "Aktuelle SSH-Listener:"
-            echo "$listening"
-        } > "$tmp_file"
-
-        textbox_file "SSH Port Fehler" "$tmp_file"
-        rm -f "$tmp_file"
-
         msg_box "Rollback" "Alte SSH-Konfiguration wurde wiederhergestellt.\n\nRoot wird NICHT gesperrt."
         exit 1
     fi
 
-    if ! whiptail --title "Root Login deaktivieren" --yesno \
-"SSH lauscht erfolgreich auf Port $port.\n\nSoll PermitRootLogin no gesetzt bleiben und root per SSH gesperrt bleiben?" 12 70; then
+    if ! yes_no_box "Root Login deaktivieren" \
+"SSH lauscht erfolgreich auf Port $port.\n\nSoll PermitRootLogin no gesetzt bleiben und root per SSH gesperrt bleiben?"; then
         set_sshd_option "PermitRootLogin" "yes"
         if sshd -t; then
             restart_ssh_service || true
