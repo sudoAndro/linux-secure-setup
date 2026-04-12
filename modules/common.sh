@@ -32,7 +32,7 @@ require_root() {
 
 require_whiptail() {
     if ! command -v whiptail >/dev/null 2>&1; then
-        echo "whiptail ist nicht installiert."
+        echo "Fehler: whiptail ist nicht installiert."
         exit 1
     fi
 }
@@ -55,67 +55,37 @@ yes_no_box() {
     whiptail --title "$title" --yesno "$message" "$height" "$width" </dev/tty >/dev/tty 2>&1
 }
 
-_input_via_tmpfile() {
-    local mode="$1"
-    local title="$2"
-    local message="$3"
-    local default_value="${4:-}"
-    local height="${5:-10}"
-    local width="${6:-60}"
-    local tmpfile
-    tmpfile="$(mktemp)"
-
-    if [[ "$mode" == "input" ]]; then
-        whiptail \
-            --title "$title" \
-            --inputbox "$message" "$height" "$width" "$default_value" \
-            --output-fd 1 \
-            </dev/tty >"$tmpfile" 2>/dev/tty || {
-                rm -f "$tmpfile"
-                return 1
-            }
-    else
-        whiptail \
-            --title "$title" \
-            --passwordbox "$message" "$height" "$width" \
-            --output-fd 1 \
-            </dev/tty >"$tmpfile" 2>/dev/tty || {
-                rm -f "$tmpfile"
-                return 1
-            }
-    fi
-
-    cat "$tmpfile"
-    rm -f "$tmpfile"
-}
-
 input_box() {
-    local title="${1:-Linux Secure Setup}"
-    local message="${2:-Bitte Eingabe machen:}"
+    local title="${1:-Input}"
+    local message="${2:-Bitte Wert eingeben:}"
     local default_value="${3:-}"
     local height="${4:-10}"
     local width="${5:-60}"
 
-    _input_via_tmpfile "input" "$title" "$message" "$default_value" "$height" "$width"
+    whiptail --title "$title" \
+        --inputbox "$message" "$height" "$width" "$default_value" \
+        3>&1 1>&2 2>&3
 }
 
 password_box() {
-    local title="${1:-Linux Secure Setup}"
+    local title="${1:-Passwort}"
     local message="${2:-Bitte Passwort eingeben:}"
     local height="${3:-10}"
     local width="${4:-60}"
 
-    _input_via_tmpfile "password" "$title" "$message" "" "$height" "$width"
+    whiptail --title "$title" \
+        --passwordbox "$message" "$height" "$width" \
+        3>&1 1>&2 2>&3
 }
 
 pause_enter() {
     echo
-    read -r -p "Press ENTER to continue..." _ < /dev/tty
+    read -r -p "Press ENTER to continue..." </dev/tty
 }
 
 info_box() {
-    local title="${1:-Linux Secure Setup}"
-    local message="${2:-Fertig.}"
+    local title="${1:-Info}"
+    local message="${2:-}"
     local height="${3:-10}"
     local width="${4:-60}"
 
@@ -127,7 +97,7 @@ textbox_file() {
     local file="${2:-}"
 
     if [[ -z "$file" || ! -f "$file" ]]; then
-        msg_box "$title" "Datei nicht gefunden: $file"
+        msg_box "Fehler" "Datei nicht gefunden."
         return 1
     fi
 
@@ -149,6 +119,7 @@ prompt_username() {
 
 prompt_port() {
     local port
+
     while true; do
         port="$(input_box "SSH Port" "Gib den SSH-Port ein (1-65535):" "22")" || return 1
         port="$(printf '%s' "$port" | tr -cd '0-9')"
