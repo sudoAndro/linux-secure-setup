@@ -1,30 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-clear
-
-echo -e "\033[1;32m"
-cat << "EOF"
- _     _                    ____                             ____       _
-| |   (_)_ __  _   ___  __ / ___|  ___  ___ _   _ _ __ ___  / ___|  ___| |_ _   _ _ __
-| |   | | '_ \| | | \ \/ / \___ \ / _ \/ __| | | | '__/ _ \ \___ \ / _ \ __| | | | '_ \
-| |___| | | | | |_| |>  <   ___) |  __/ (__| |_| | | |  __/  ___) |  __/ |_| |_| | |_) |
-|_____|_|_| |_|\__,_/_/\_\ |____/ \___|\___|\__,_|_|  \___| |____/ \___|\__|\__,_| .__/
-                                                                                 |_|
-EOF
-echo -e "\033[1;31m"
-echo "                         Linux Secure Setup Toolkit - Created by sudoAndro"
-echo -e "\033[0m"
-echo
-
-read -rp "Press ENTER to start setup..."
-
-
-#!/usr/bin/env bash
-set -euo pipefail
-
 REPO_URL="https://github.com/sudoAndro/linux-secure-setup.git"
 INSTALL_DIR="/opt/linux-secure-setup"
+LAUNCHER="/usr/local/bin/linux-secure-setup"
 
 print_info() {
     echo -e "\e[1;34m[INFO]\e[0m $1"
@@ -40,6 +19,23 @@ print_warn() {
 
 print_err() {
     echo -e "\e[1;31m[ERR ]\e[0m $1"
+}
+
+show_banner() {
+    clear
+    echo -e "\033[1;32m"
+    cat <<'EOF'
+ _     _                    ____                             ____       _
+| |   (_)_ __  _   ___  __ / ___|  ___  ___ _   _ _ __ ___  / ___|  ___| |_ _   _ _ __
+| |   | | '_ \| | | \ \/ / \___ \ / _ \/ __| | | | '__/ _ \ \___ \ / _ \ __| | | | '_ \
+| |___| | | | | |_| |>  <   ___) |  __/ (__| |_| | | |  __/  ___) |  __/ |_| |_| | |_) |
+|_____|_|_| |_|\__,_/_/\_\ |____/ \___|\___|\__,_|_|  \___| |____/ \___|\__|\__,_| .__/
+                                                                                 |_|
+EOF
+    echo -e "\033[1;31m"
+    echo "                         Linux Secure Setup Toolkit - Created by sudoAndro"
+    echo -e "\033[0m"
+    echo
 }
 
 require_root() {
@@ -73,19 +69,21 @@ install_or_update_repo() {
     if [[ -d "$INSTALL_DIR/.git" ]]; then
         print_info "Bestehende Installation gefunden. Aktualisiere Repository ..."
         git -C "$INSTALL_DIR" remote set-url origin "$REPO_URL"
-        git -C "$INSTALL_DIR" fetch origin
+        git -C "$INSTALL_DIR" fetch --depth 1 origin main
+        git -C "$INSTALL_DIR" checkout -f main
         git -C "$INSTALL_DIR" reset --hard origin/main
         print_ok "Repository wurde aktualisiert."
-    else
-        if [[ -d "$INSTALL_DIR" ]]; then
-            print_warn "$INSTALL_DIR existiert bereits und wird ersetzt."
-            rm -rf "$INSTALL_DIR"
-        fi
-
-        print_info "Klonen nach $INSTALL_DIR ..."
-        git clone "$REPO_URL" "$INSTALL_DIR"
-        print_ok "Repository wurde geklont."
+        return
     fi
+
+    if [[ -e "$INSTALL_DIR" ]]; then
+        print_warn "$INSTALL_DIR existiert bereits und wird ersetzt."
+        rm -rf "$INSTALL_DIR"
+    fi
+
+    print_info "Klonen nach $INSTALL_DIR ..."
+    git clone --depth 1 "$REPO_URL" "$INSTALL_DIR"
+    print_ok "Repository wurde geklont."
 }
 
 fix_permissions() {
@@ -95,16 +93,16 @@ fix_permissions() {
 }
 
 create_launcher() {
-    print_info "Erstelle Starter unter /usr/local/bin/linux-secure-setup ..."
+    print_info "Erstelle Starter unter $LAUNCHER ..."
 
-    cat > /usr/local/bin/linux-secure-setup <<'EOF'
+    cat > "$LAUNCHER" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 cd /opt/linux-secure-setup
 exec sudo bash ./menu.sh
 EOF
 
-    chmod +x /usr/local/bin/linux-secure-setup
+    chmod +x "$LAUNCHER"
     print_ok "Starter wurde erstellt."
 }
 
@@ -121,14 +119,19 @@ show_finish_message() {
 }
 
 main() {
+    show_banner
     require_root
     check_dependencies
     install_or_update_repo
     fix_permissions
     create_launcher
     show_finish_message
-    cd "$INSTALL_DIR"
-    exec bash ./menu.sh
+
+    read -r -p "Jetzt das Menue starten? [Y/n] " start_now
+    if [[ "${start_now:-Y}" =~ ^([Yy]|[Jj]|)$ ]]; then
+        cd "$INSTALL_DIR"
+        exec bash ./menu.sh
+    fi
 }
 
 main "$@"
