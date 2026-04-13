@@ -2,56 +2,10 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/common.sh"
 
-require_root
-require_whiptail
-
-main() {
-    whiptail --title "Automatic Security Updates" \
-        --yesno \
-"Automatische Security Updates aktivieren?
-
-Installiert 'unattended-upgrades' und
-aktiviert den Dienst.
-
-Fortfahren?" 13 55 || exit 0
-
-    clear
-    echo "Installiere unattended-upgrades..."
-    echo
-
-    DEBIAN_FRONTEND=noninteractive apt update
-    DEBIAN_FRONTEND=noninteractive apt install -y unattended-upgrades apt-listchanges
-
-    DEBIAN_FRONTEND=noninteractive dpkg-reconfigure -plow unattended-upgrades
-
-    systemctl enable unattended-upgrades
-    systemctl restart unattended-upgrades
-    sleep 1
-
-    local tmp_file
-    tmp_file=$(mktemp)
-    {
-        echo "===== unattended-upgrades Status ====="
-        systemctl status unattended-upgrades --no-pager || true
-        echo
-        echo "===== Aktive Timers ====="
-        systemctl list-timers apt* || true
-    } > "$tmp_file" 2>&1
-    textbox_file "Auto Updates Status" "$tmp_file"
-    rm -f "$tmp_file"
-
-    msg_box "Auto Updates" "Automatische Security Updates wurden aktiviert."
-    exit 0
-}
-
-main "$@"#!/usr/bin/env bash
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/common.sh"
-
+ensure_ui_environment
 require_root
 require_whiptail
 
@@ -64,10 +18,9 @@ main() {
     echo "Installiere unattended-upgrades..."
     echo
 
-    apt update
-    apt install -y unattended-upgrades apt-listchanges
-
-    dpkg-reconfigure -plow unattended-upgrades
+    DEBIAN_FRONTEND=noninteractive apt update
+    DEBIAN_FRONTEND=noninteractive apt install -y unattended-upgrades apt-listchanges
+    DEBIAN_FRONTEND=noninteractive dpkg-reconfigure -plow unattended-upgrades
 
     systemctl enable unattended-upgrades
     systemctl restart unattended-upgrades
@@ -75,87 +28,19 @@ main() {
     sleep 1
 
     local tmp_file
-    tmp_file=$(mktemp)
+    tmp_file="$(mktemp)"
     {
         echo "===== unattended-upgrades Status ====="
         systemctl status unattended-upgrades --no-pager || true
         echo
-        echo "===== Aktive Timers ====="
-        systemctl list-timers apt* || true
+        echo "===== Aktive Timer ====="
+        systemctl list-timers 'apt*' || true
     } > "$tmp_file" 2>&1
+
     textbox_file "Auto Updates Status" "$tmp_file"
     rm -f "$tmp_file"
 
     msg_box "Auto Updates" "Automatische Security Updates wurden aktiviert."
-}
-
-main "$@"#!/usr/bin/env bash
-
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=/dev/null
-source "$SCRIPT_DIR/common.sh"
-
-require_root
-require_whiptail
-
-JAIL_LOCAL="/etc/fail2ban/jail.local"
-
-show_fail2ban_status() {
-    local tmp_file
-    tmp_file=$(mktemp)
-
-    {
-        echo "===== fail2ban-client status ====="
-        fail2ban-client status || true
-        echo
-        echo "===== fail2ban-client status sshd ====="
-        fail2ban-client status sshd || true
-    } > "$tmp_file" 2>&1
-
-    textbox_file "Fail2Ban Status" "$tmp_file"
-    rm -f "$tmp_file"
-}
-
-main() {
-    local ssh_port
-
-    if ! yes_no_box "Fail2Ban" "Fail2Ban fuer SSH einrichten?\n\nSchuetzt gegen Brute-Force-Angriffe auf SSH."; then
-        exit 0
-    fi
-
-    ssh_port=$(prompt_port) || exit 0
-
-    clear
-    echo "Konfiguriere Fail2Ban..."
-    echo
-
-    cat > "$JAIL_LOCAL" <<EOF
-[DEFAULT]
-bantime = 1h
-findtime = 10m
-maxretry = 5
-backend = systemd
-
-[sshd]
-enabled = true
-port = ${ssh_port}
-logpath = %(sshd_log)s
-EOF
-
-    echo "Konfiguration geschrieben nach: $JAIL_LOCAL"
-    echo
-
-    systemctl enable fail2ban
-    systemctl restart fail2ban
-
-    echo "Fail2Ban wurde gestartet."
-    echo
-
-    show_fail2ban_status
-
-    read -r -p "Press ENTER to return to menu..."
 }
 
 main "$@"

@@ -32,17 +32,16 @@ Run:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/sudoAndro/linux-secure-setup/main/install.sh | sudo bash
+```
 
-##Start manually
+## Start Manually
 
-- sudo bash /opt/linux-secure-setup/menu.sh
+- `sudo bash /opt/linux-secure-setup/menu.sh`
+- Or, after installation: `linux-secure-setup`
 
-- Or, after installation:
+## Project Structure
 
-- linux-secure-setup
-
-##Project Structure
-
+```text
 linux-secure-setup
 ├── install.sh
 ├── menu.sh
@@ -50,16 +49,22 @@ linux-secure-setup
 ├── LICENSE
 ├── modules/
 └── images/
+```
 
-##Important SSH Safety Note
+## Important SSH Safety Note
 
 The SSH module is designed to reduce lockout risk:
 
-- create or reuse an admin user
-- insert a public key manually
-- change SSH port
-- disable password authentication
-- disable root login
-- test the login before finalizing
-- rollback configuration if login fails
+- Create or reuse an admin user
+- Insert a public key manually
+- Change the SSH port
+- Disable password authentication
+- Disable root login
+- Test the login before finalizing
+- Roll back the configuration if the new login fails
 
+## Notes
+
+- Run the toolkit with `sudo` or as `root`.
+- `whiptail` is required for the interactive dialogs and will be installed by `install.sh` if missing.
+- The project currently targets Debian-based systems only.
