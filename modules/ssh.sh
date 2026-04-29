@@ -191,6 +191,13 @@ step_harden_ssh() {
 
     cp "$SSHD_CONFIG" "$SSHD_BACKUP"
 
+    # Drop-in Ordner prüfen und bereinigen
+    if [ -d /etc/ssh/sshd_config.d ]; then
+        for f in /etc/ssh/sshd_config.d/*.conf; do
+            [ -f "$f" ] && sed -i -E "s|^[#[:space:]]*Port[[:space:]]+.*||g" "$f" || true
+        done
+    fi
+
     set_sshd_option "Port" "$port"
     set_sshd_option "PermitRootLogin" "no"
     set_sshd_option "PasswordAuthentication" "no"
