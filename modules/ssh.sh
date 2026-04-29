@@ -40,15 +40,6 @@ restart_ssh_service() {
     systemctl restart ssh.service
 }
 
-    if systemctl list-unit-files | grep -q '^sshd\.service'; then
-        systemctl restart sshd
-        return 0
-    fi
-
-    msg_box "Warnung" "Kein Dienstname ssh oder sshd erkannt.\n\nBitte SSH-Dienst manuell neu starten."
-    return 1
-}
-
 verify_ssh_port() {
     local expected_port="$1"
     local listening
