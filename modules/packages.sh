@@ -11,6 +11,7 @@ PACKAGES=(
     curl
     wget
     ufw
+    ssh
     fail2ban
     debsums
     apt-transport-https
@@ -27,6 +28,7 @@ main() {
   curl
   wget
   ufw
+  ssh
   fail2ban
   debsums
   apt-transport-https
