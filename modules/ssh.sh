@@ -19,10 +19,7 @@ set_sshd_option() {
     local key="$1"
     local value="$2"
 
-    # Alle vorhandenen Einträge auskommentieren
     sed -i -E "s|^[#[:space:]]*${key}[[:space:]]+.*|#${key} replaced|g" "$SSHD_CONFIG"
-
-    # Neu ans Ende schreiben
     echo "${key} ${value}" >> "$SSHD_CONFIG"
 }
 
@@ -39,10 +36,9 @@ ensure_ssh_server_installed() {
 }
 
 restart_ssh_service() {
-    if systemctl list-unit-files | grep -q '^ssh\.service'; then
-        systemctl restart ssh
-        return 0
-    fi
+    systemctl daemon-reload
+    systemctl restart ssh.service
+}
 
     if systemctl list-unit-files | grep -q '^sshd\.service'; then
         systemctl restart sshd
