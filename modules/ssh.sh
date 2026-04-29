@@ -19,11 +19,11 @@ set_sshd_option() {
     local key="$1"
     local value="$2"
 
-    if grep -qE "^[#[:space:]]*${key}[[:space:]]+" "$SSHD_CONFIG"; then
-        sed -i -E "s|^[#[:space:]]*${key}[[:space:]]+.*|${key} ${value}|g" "$SSHD_CONFIG"
-    else
-        printf '%s %s\n' "$key" "$value" >> "$SSHD_CONFIG"
-    fi
+    # Alle vorhandenen Einträge auskommentieren
+    sed -i -E "s|^[#[:space:]]*${key}[[:space:]]+.*|#${key} replaced|g" "$SSHD_CONFIG"
+
+    # Neu ans Ende schreiben
+    echo "${key} ${value}" >> "$SSHD_CONFIG"
 }
 
 ensure_ssh_server_installed() {
