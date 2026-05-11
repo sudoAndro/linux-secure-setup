@@ -1,3 +1,5 @@
+![Preview](images/menu.png)
+
 # Linux Secure Setup
 
 Interactive Linux security hardening toolkit for Debian-based systems.
